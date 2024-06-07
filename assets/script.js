@@ -8,19 +8,28 @@ canvas.height = 600;
 const tileSize = 40;
 const mapWidth = canvas.width / tileSize;
 const mapHeight = canvas.height / tileSize;
-let player = { x: 1, y: 1, color: "blue", direction: "right" };
+let player = { x: 1, y: 1, color: "blue", direction: "right", health: 3 };
 let treasure = { x: mapWidth - 2, y: mapHeight - 2, color: "gold" };
 let enemies = [];
 let swordActive = false;
+let sword = { x: -1, y: -1, active: false };
 
 // Create enemies
-for (let i = 0; i < 5; i++) {
-  enemies.push({
-    x: Math.floor(Math.random() * (mapWidth - 2)) + 1,
-    y: Math.floor(Math.random() * (mapHeight - 2)) + 1,
-    color: "red",
-  });
+function createEnemies() {
+  enemies = [];
+  for (let i = 0; i < 5; i++) {
+    enemies.push({
+      x: Math.floor(Math.random() * (mapWidth - 2)) + 1,
+      y: Math.floor(Math.random() * (mapHeight - 2)) + 1,
+      color: "red",
+      hit: false,
+      hitTime: 0,
+    });
+  }
 }
+
+// Initialize enemies
+createEnemies();
 
 // Map
 const map = [];
@@ -34,6 +43,13 @@ for (let y = 0; y < mapHeight; y++) {
     }
   }
   map.push(row);
+}
+
+// Update health display
+function updateHealth() {
+  document.getElementById("health").innerText = `Health: ${"❤️".repeat(
+    player.health
+  )}`;
 }
 
 // Draw the game
@@ -53,6 +69,22 @@ function drawGame() {
   // Draw player with arrow
   drawPlayerWithArrow(player.x, player.y, player.color, player.direction);
 
+  // Draw sword
+  if (sword.active) {
+    ctx.fillStyle = "yellow";
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        ctx.fillRect(
+          (sword.x + dx) * tileSize,
+          (sword.y + dy) * tileSize,
+          tileSize,
+          tileSize
+        );
+      }
+    }
+  }
+
   // Draw treasure
   ctx.fillStyle = treasure.color;
   ctx.fillRect(
@@ -64,9 +96,19 @@ function drawGame() {
 
   // Draw enemies
   for (let enemy of enemies) {
-    ctx.fillStyle = enemy.color;
+    if (enemy.hit) {
+      if (performance.now() - enemy.hitTime < 200) {
+        ctx.fillStyle = "white";
+      } else {
+        continue; // Skip drawing hit enemies after flash
+      }
+    } else {
+      ctx.fillStyle = enemy.color;
+    }
     ctx.fillRect(enemy.x * tileSize, enemy.y * tileSize, tileSize, tileSize);
   }
+
+  requestAnimationFrame(drawGame);
 }
 
 function drawPlayerWithArrow(x, y, color, direction) {
@@ -143,41 +185,79 @@ function movePlayer(event) {
     // Move treasure to a new position
     treasure.x = Math.floor(Math.random() * (mapWidth - 2)) + 1;
     treasure.y = Math.floor(Math.random() * (mapHeight - 2)) + 1;
+    // Respawn enemies
+    createEnemies();
   }
 
   drawGame();
 }
 
 function swingSword() {
-  if (swordActive) return;
+  if (sword.active) return;
 
-  swordActive = true;
-  setTimeout(() => (swordActive = false), 200);
+  sword.active = true;
+  setTimeout(() => (sword.active = false), 200);
 
-  let swordX = player.x;
-  let swordY = player.y;
+  sword.x = player.x;
+  sword.y = player.y;
 
-  switch (player.direction) {
-    case "up":
-      swordY -= 1;
-      break;
-    case "down":
-      swordY += 1;
-      break;
-    case "left":
-      swordX -= 1;
-      break;
-    case "right":
-      swordX += 1;
-      break;
+  // Check for enemy hits
+  for (let enemy of enemies) {
+    if (
+      Math.abs(enemy.x - sword.x) <= 1 &&
+      Math.abs(enemy.y - sword.y) <= 1 &&
+      !(enemy.x === sword.x && enemy.y === sword.y)
+    ) {
+      enemy.hit = true;
+      enemy.hitTime = performance.now();
+    }
   }
 
-  enemies = enemies.filter(
-    (enemy) => !(enemy.x === swordX && enemy.y === swordY)
-  );
+  // Remove enemies after hit
+  setTimeout(() => {
+    enemies = enemies.filter(
+      (enemy) => !(enemy.hit && performance.now() - enemy.hitTime >= 200)
+    );
+  }, 200);
+}
+
+// Enemy movement
+function moveEnemies() {
+  for (let enemy of enemies) {
+    if (enemy.hit) continue;
+
+    const directions = [
+      { x: 0, y: -1 },
+      { x: 0, y: 1 },
+      { x: -1, y: 0 },
+      { x: 1, y: 0 },
+    ];
+    const direction = directions[Math.floor(Math.random() * directions.length)];
+    const newX = enemy.x + direction.x;
+    const newY = enemy.y + direction.y;
+
+    if (map[newY][newX] === 0) {
+      enemy.x = newX;
+      enemy.y = newY;
+    }
+
+    // Check for collision with player
+    if (enemy.x === player.x && enemy.y === player.y) {
+      player.health -= 1;
+      updateHealth();
+      if (player.health <= 0) {
+        alert("Game Over!");
+        document.removeEventListener("keydown", movePlayer);
+        return;
+      }
+    }
+  }
+  setTimeout(moveEnemies, 500);
 }
 
 document.addEventListener("keydown", movePlayer);
 
 // Start the game
+updateHealth();
 drawGame();
+moveEnemies();
