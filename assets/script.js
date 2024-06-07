@@ -4,12 +4,20 @@ const ctx = canvas.getContext("2d");
 canvas.width = 800;
 canvas.height = 600;
 
+// Load images
+const playerImg = new Image();
+playerImg.src = "./assets/icons/hero.png"; // Replace with the actual path to your player image
+const treasureImg = new Image();
+treasureImg.src = "./assets/icons/treasure.png"; // Replace with the actual path to your treasure image
+const enemyImg = new Image();
+enemyImg.src = "./assets/icons/enemy.png"; // Replace with the actual path to your enemy image
+
 // Game variables
 const tileSize = 40;
 const mapWidth = canvas.width / tileSize;
 const mapHeight = canvas.height / tileSize;
-let player = { x: 1, y: 1, color: "blue", direction: "right", health: 3 };
-let treasure = { x: mapWidth - 2, y: mapHeight - 2, color: "gold" };
+let player = { x: 1, y: 1, direction: "right", health: 3 };
+let treasure = { x: mapWidth - 2, y: mapHeight - 2 };
 let enemies = [];
 let swordActive = false;
 let sword = { x: -1, y: -1, active: false };
@@ -21,7 +29,6 @@ function createEnemies() {
     enemies.push({
       x: Math.floor(Math.random() * (mapWidth - 2)) + 1,
       y: Math.floor(Math.random() * (mapHeight - 2)) + 1,
-      color: "red",
       hit: false,
       hitTime: 0,
     });
@@ -67,7 +74,7 @@ function drawGame() {
   }
 
   // Draw player with arrow
-  drawPlayerWithArrow(player.x, player.y, player.color, player.direction);
+  drawPlayerWithArrow(player.x, player.y, player.direction);
 
   // Draw sword
   if (sword.active) {
@@ -86,8 +93,8 @@ function drawGame() {
   }
 
   // Draw treasure
-  ctx.fillStyle = treasure.color;
-  ctx.fillRect(
+  ctx.drawImage(
+    treasureImg,
     treasure.x * tileSize,
     treasure.y * tileSize,
     tileSize,
@@ -99,21 +106,31 @@ function drawGame() {
     if (enemy.hit) {
       if (performance.now() - enemy.hitTime < 200) {
         ctx.fillStyle = "white";
+        ctx.fillRect(
+          enemy.x * tileSize,
+          enemy.y * tileSize,
+          tileSize,
+          tileSize
+        );
       } else {
         continue; // Skip drawing hit enemies after flash
       }
     } else {
-      ctx.fillStyle = enemy.color;
+      ctx.drawImage(
+        enemyImg,
+        enemy.x * tileSize,
+        enemy.y * tileSize,
+        tileSize,
+        tileSize
+      );
     }
-    ctx.fillRect(enemy.x * tileSize, enemy.y * tileSize, tileSize, tileSize);
   }
 
   requestAnimationFrame(drawGame);
 }
 
-function drawPlayerWithArrow(x, y, color, direction) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+function drawPlayerWithArrow(x, y, direction) {
+  ctx.drawImage(playerImg, x * tileSize, y * tileSize, tileSize, tileSize);
 
   ctx.fillStyle = "white";
   ctx.beginPath();
@@ -259,5 +276,4 @@ document.addEventListener("keydown", movePlayer);
 
 // Start the game
 updateHealth();
-drawGame();
-moveEnemies();
+draw;
